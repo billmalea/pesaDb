@@ -116,6 +116,28 @@
     </div>
 
     <div class="card">
+        <h3>🚀 Real-Time Performance</h3>
+        <p>Verify the engine's speed claims live in your browser.</p>
+        <div style="display: flex; gap: 20px; margin-top: 15px;">
+            <div style="flex: 1; text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                <div style="font-size: 12px; color: #666;">LAST QUERY TIME</div>
+                <div id="perf-last" style="font-size: 24px; font-weight: bold; color: #007bff;">- ms</div>
+            </div>
+            <div style="flex: 1; text-align: center; padding: 15px; background: #e3f2fd; border-radius: 8px;">
+                <div style="font-size: 12px; color: #666;">WRITE SPEED (est)</div>
+                <div id="perf-write" style="font-size: 24px; font-weight: bold; color: #28a745;">- ops/s</div>
+            </div>
+            <div style="flex: 1; text-align: center; padding: 15px; background: #e3f2fd; border-radius: 8px;">
+                <div style="font-size: 12px; color: #666;">READ SPEED (est)</div>
+                <div id="perf-read" style="font-size: 24px; font-weight: bold; color: #17a2b8;">- ops/s</div>
+            </div>
+        </div>
+        <button onclick="runBenchmark()" style="margin-top: 15px; width: 100%; background: #6c757d;">Run 1,000 Op Live
+            Benchmark</button>
+        <div id="bench-status" style="margin-top: 10px; font-size: 12px; color: #666; text-align: center;"></div>
+    </div>
+
+    <div class="card">
         <h3>SQL Console</h3>
         <input type="text" id="sqlInput" placeholder="SELECT * FROM transactions" style="width: 70%">
         <button onclick="runSQL()">Execute</button>
@@ -131,7 +153,36 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ sql })
             });
-            return await res.json();
+            const json = await res.json();
+            if (json.timeMs) {
+                document.getElementById('perf-last').innerText = json.timeMs + ' ms';
+            }
+            return json;
+        }
+
+        async function runBenchmark() {
+            const btn = document.querySelector('button[onclick="runBenchmark()"]');
+            const status = document.getElementById('bench-status');
+            btn.disabled = true;
+            btn.innerText = "Running Benchmark...";
+            status.innerText = "Inserting 1000 rows, then reading them back...";
+
+            try {
+                const res = await fetch('/api/benchmark', { method: 'POST' });
+                const json = await res.json();
+                if (json.success) {
+                    document.getElementById('perf-write').innerText = json.metrics.insertSpeed + ' ops/s';
+                    document.getElementById('perf-read').innerText = json.metrics.readSpeed + ' ops/s';
+                    status.innerText = `Done! Inserted 1k in ${json.metrics.insertTime}ms, Read 1k in ${json.metrics.readTime}ms`;
+                } else {
+                    status.innerText = "Error: " + json.error;
+                }
+            } catch (e) {
+                status.innerText = "Network Error";
+            }
+
+            btn.disabled = false;
+            btn.innerText = "Run 1,000 Op Live Benchmark";
         }
 
         async function refresh() {

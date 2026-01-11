@@ -9,7 +9,7 @@
 -   **Recursive Descent SQL Parser**: A hand-written parser (no Regex hacks/libraries) that converts SQL into an AST.
 -   **Full CRUD Support**: Supports `CREATE`, `INSERT`, `SELECT` (with `WHERE`), `UPDATE`, and `DELETE`.
 -   **Interactive REPL**: A command-line interface to interact with the DB.
--   **Web Demo**: A built-in HTTP server and Frontend to manage students.
+-   **Web Demo**: A Transaction Manager UI with **Live Performance Benchmarking** to verify engine speed in the browser.
 
 ## 🛠️ Architecture
 
