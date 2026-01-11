@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PesaDB Student Manager</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f0f2f5; }
+        h1 { color: #1a1a1a; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; font-weight: 600; }
+        input, button { padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; margin-right: 8px; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        button.delete { background: #dc3545; }
+        button.delete:hover { background: #a71d2a; }
+        .error { color: red; margin-top: 10px; }
+        pre { background: #2d2d2d; color: #f8f8f2; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>PesaDB Student Manager</h1>
+    
+    <div class="card">
+        <h3>Add Student</h3>
+        <input type="number" id="id" placeholder="ID (Primary Key)">
+        <input type="text" id="name" placeholder="Name">
+        <input type="number" id="age" placeholder="Age">
+        <button onclick="addStudent()">Add</button>
+        <div id="error" class="error"></div>
+    </div>
+
+    <div class="card">
+        <h3>Current Students</h3>
+        <table id="studentTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Age</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <!-- Rows here -->
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>SQL Console</h3>
+        <input type="text" id="sqlInput" placeholder="SELECT * FROM students" style="width: 70%">
+        <button onclick="runSQL()">Execute</button>
+        <pre id="sqlOutput">Results will appear here...</pre>
+    </div>
+
+    <script>
+        const API = '/api/sql';
+
+        async function execute(sql) {
+            const res = await fetch(API, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sql })
+            });
+            return await res.json();
+        }
+
+        async function refresh() {
+            const res = await execute("SELECT * FROM students");
+            if (res.success) {
+                const tbody = document.getElementById('tableBody');
+                tbody.innerHTML = '';
+                res.data.forEach(student => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${student.id}</td>
+                        <td>${student.name}</td>
+                        <td>${student.age}</td>
+                        <td>
+                            <button class="delete" onclick="deleteStudent(${student.id})">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+
+        async function addStudent() {
+            const id = document.getElementById('id').value;
+            const name = document.getElementById('name').value;
+            const age = document.getElementById('age').value;
+            if (!id || !name || !age) return;
+
+            const res = await execute(`INSERT INTO students VALUES (${id}, '${name}', ${age})`);
+            if (res.success) {
+                document.getElementById('id').value = '';
+                document.getElementById('name').value = '';
+                document.getElementById('age').value = '';
+                document.getElementById('error').innerText = '';
+                refresh();
+            } else {
+                document.getElementById('error').innerText = res.error;
+            }
+        }
+
+        async function deleteStudent(id) {
+            const res = await execute(`DELETE FROM students WHERE id = ${id}`);
+            if (res.success) {
+                refresh();
+            } else {
+                alert(res.error);
+            }
+        }
+
+        async function runSQL() {
+            const sql = document.getElementById('sqlInput').value;
+            const res = await execute(sql);
+            document.getElementById('sqlOutput').innerText = JSON.stringify(res, null, 2);
+            if (res.success && (sql.toUpperCase().includes('INSERT') || sql.toUpperCase().includes('DELETE') || sql.toUpperCase().includes('UPDATE'))) {
+                 refresh();
+            }
+        }
+
+        // Initial load
+        refresh();
+    </script>
+</body>
+</html>
