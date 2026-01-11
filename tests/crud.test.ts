@@ -4,9 +4,9 @@ import { unlink } from "node:fs/promises";
 // Cleanup
 const catalogPath = "catalog_crud.json";
 // Cleanup
-try { await unlink(catalogPath); } catch { }
-try { await unlink("test_crud.db"); } catch { }
-try { await unlink("test_crud.idx"); } catch { }
+try { await unlink("data/" + catalogPath); } catch { }
+try { await unlink("data/test_crud.db"); } catch { }
+try { await unlink("data/test_crud.idx"); } catch { }
 
 const db = new Database(catalogPath);
 await db.init();

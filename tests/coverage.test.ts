@@ -19,7 +19,7 @@ describe("Coverage Boosters", () => {
 
     test("Catalog.getTable returns correct data", async () => {
         const c = new Catalog();
-        try { await unlink("catalog.json"); } catch { }
+        try { await unlink("data/catalog.json"); } catch { }
         await c.init();
         c.addTable("test_ct", [{ name: "id", type: ColumnType.INT }]);
         expect(c.getTable("test_ct")).toHaveLength(1);
@@ -28,7 +28,7 @@ describe("Coverage Boosters", () => {
 
     test("Index.get returns offset", async () => {
         const idx = new Index("test_idx_coverage", ColumnType.INT);
-        try { await unlink("test_idx_coverage.idx"); } catch { }
+        try { await unlink("data/test_idx_coverage.idx"); } catch { }
         await idx.init();
         await idx.add(100, 5000);
         expect(idx.get(100)).toBe(5000);
@@ -38,7 +38,7 @@ describe("Coverage Boosters", () => {
     test("Index init throws on unsupported type during read", async () => {
         // Create an index file with some data
         const idx = new Index("test_idx_fail", ColumnType.INT);
-        try { await unlink("test_idx_fail.idx"); } catch { }
+        try { await unlink("data/test_idx_fail.idx"); } catch { }
         await idx.init();
         await idx.add(1, 100);
 
@@ -60,7 +60,7 @@ describe("Coverage Boosters", () => {
 
         const db = new Database(catalogPath);
         // Clean existing
-        try { await unlink(catalogPath); await unlink(`${dbName}.db`); await unlink(`${dbName}.idx`); } catch { }
+        try { await unlink("data/" + catalogPath); await unlink(`data/${dbName}.db`); await unlink(`data/${dbName}.idx`); } catch { }
 
         await db.init();
         await db.execute(`CREATE TABLE ${dbName} (id INT PRIMARY KEY, val INT)`);
@@ -79,6 +79,6 @@ describe("Coverage Boosters", () => {
         expect(res3).toHaveLength(2);
 
         // Cleanup
-        try { await unlink(catalogPath); await unlink(`${dbName}.db`); await unlink(`${dbName}.idx`); } catch { }
+        try { await unlink("data/" + catalogPath); await unlink(`data/${dbName}.db`); await unlink(`data/${dbName}.idx`); } catch { }
     });
 });

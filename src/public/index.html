@@ -1,45 +1,111 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PesaDB Student Manager</title>
+    <title>PesaDB Transaction Manager</title>
     <style>
-        body { font-family: 'Inter', sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f0f2f5; }
-        h1 { color: #1a1a1a; }
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
-        th { background: #f8f9fa; font-weight: 600; }
-        input, button { padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; margin-right: 8px; }
-        button { background: #007bff; color: white; border: none; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        button.delete { background: #dc3545; }
-        button.delete:hover { background: #a71d2a; }
-        .error { color: red; margin-top: 10px; }
-        pre { background: #2d2d2d; color: #f8f8f2; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        body {
+            font-family: 'Inter', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f0f2f5;
+        }
+
+        h1 {
+            color: #1a1a1a;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+
+        input,
+        button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 8px;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        button.delete {
+            background: #dc3545;
+        }
+
+        button.delete:hover {
+            background: #a71d2a;
+        }
+
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
     </style>
 </head>
+
 <body>
-    <h1>PesaDB Student Manager</h1>
-    
+    <h1>PesaDB Transaction Manager</h1>
+
     <div class="card">
-        <h3>Add Student</h3>
-        <input type="number" id="id" placeholder="ID (Primary Key)">
-        <input type="text" id="name" placeholder="Name">
-        <input type="number" id="age" placeholder="Age">
-        <button onclick="addStudent()">Add</button>
+        <h3>Add Transaction</h3>
+        <input type="number" id="id" placeholder="ID (PK)">
+        <input type="text" id="ref" placeholder="Reference">
+        <input type="number" id="amt" placeholder="Amount">
+        <button onclick="addTxn()">Add</button>
         <div id="error" class="error"></div>
     </div>
 
     <div class="card">
-        <h3>Current Students</h3>
-        <table id="studentTable">
+        <h3>Recent Transactions</h3>
+        <table id="txnTable">
             <thead>
                 <tr>
                     <th>ID</th>
-                    <th>Name</th>
-                    <th>Age</th>
+                    <th>Reference</th>
+                    <th>Amount</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -51,7 +117,7 @@
 
     <div class="card">
         <h3>SQL Console</h3>
-        <input type="text" id="sqlInput" placeholder="SELECT * FROM students" style="width: 70%">
+        <input type="text" id="sqlInput" placeholder="SELECT * FROM transactions" style="width: 70%">
         <button onclick="runSQL()">Execute</button>
         <pre id="sqlOutput">Results will appear here...</pre>
     </div>
@@ -69,18 +135,28 @@
         }
 
         async function refresh() {
-            const res = await execute("SELECT * FROM students");
+            // First run create table just in case (idempotent if db persists but table check handles it)
+            // Or typically we assume schema exists. We can construct a safe CREATE TABLE IF NOT EXISTS flow in real apps.
+            // For this output, we'll try to select.
+            let res = await execute("SELECT * FROM transactions");
+
+            // Auto-init for demo if missing
+            if (!res.success && res.error.includes('not found')) {
+                await execute("CREATE TABLE transactions (id INT PRIMARY KEY, reference STRING, amount FLOAT)");
+                res = await execute("SELECT * FROM transactions");
+            }
+
             if (res.success) {
                 const tbody = document.getElementById('tableBody');
                 tbody.innerHTML = '';
-                res.data.forEach(student => {
+                res.data.forEach(txn => {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td>${student.id}</td>
-                        <td>${student.name}</td>
-                        <td>${student.age}</td>
+                        <td>${txn.id}</td>
+                        <td>${txn.reference}</td>
+                        <td>${txn.amount}</td>
                         <td>
-                            <button class="delete" onclick="deleteStudent(${student.id})">Delete</button>
+                            <button class="delete" onclick="deleteTxn(${txn.id})">Delete</button>
                         </td>
                     `;
                     tbody.appendChild(tr);
@@ -88,17 +164,17 @@
             }
         }
 
-        async function addStudent() {
+        async function addTxn() {
             const id = document.getElementById('id').value;
-            const name = document.getElementById('name').value;
-            const age = document.getElementById('age').value;
-            if (!id || !name || !age) return;
+            const ref = document.getElementById('ref').value;
+            const amt = document.getElementById('amt').value;
+            if (!id || !ref || !amt) return;
 
-            const res = await execute(`INSERT INTO students VALUES (${id}, '${name}', ${age})`);
+            const res = await execute(`INSERT INTO transactions VALUES (${id}, '${ref}', ${amt})`);
             if (res.success) {
                 document.getElementById('id').value = '';
-                document.getElementById('name').value = '';
-                document.getElementById('age').value = '';
+                document.getElementById('ref').value = '';
+                document.getElementById('amt').value = '';
                 document.getElementById('error').innerText = '';
                 refresh();
             } else {
@@ -106,8 +182,8 @@
             }
         }
 
-        async function deleteStudent(id) {
-            const res = await execute(`DELETE FROM students WHERE id = ${id}`);
+        async function deleteTxn(id) {
+            const res = await execute(`DELETE FROM transactions WHERE id = ${id}`);
             if (res.success) {
                 refresh();
             } else {
@@ -120,7 +196,7 @@
             const res = await execute(sql);
             document.getElementById('sqlOutput').innerText = JSON.stringify(res, null, 2);
             if (res.success && (sql.toUpperCase().includes('INSERT') || sql.toUpperCase().includes('DELETE') || sql.toUpperCase().includes('UPDATE'))) {
-                 refresh();
+                refresh();
             }
         }
 
@@ -128,4 +204,5 @@
         refresh();
     </script>
 </body>
+
 </html>

@@ -4,8 +4,8 @@ import { ColumnType } from "../src/engine/Constants";
 import { unlink } from "node:fs/promises";
 
 // Cleanup old files
-try { await unlink("test_users.db"); } catch { }
-try { await unlink("test_users.idx"); } catch { }
+try { await unlink("data/test_users.db"); } catch { }
+try { await unlink("data/test_users.idx"); } catch { }
 
 const columns: Column[] = [
     { name: "id", type: ColumnType.INT, isPrimary: true },

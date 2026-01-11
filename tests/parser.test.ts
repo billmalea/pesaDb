@@ -1,10 +1,10 @@
 import { Parser } from "../src/engine/Parser";
 
 const queries = [
-    "CREATE TABLE users (id INT PRIMARY KEY, name STRING, age INT)",
-    "INSERT INTO users VALUES (1, 'Bill', 30)",
-    "SELECT * FROM users WHERE id = 1",
-    "SELECT name, age FROM users WHERE age > 20 AND name = 'Bill'"
+    "CREATE TABLE transactions (id INT PRIMARY KEY, reference STRING, amount FLOAT)",
+    "INSERT INTO transactions VALUES (1, 'REF_123', 500.50)",
+    "SELECT * FROM transactions WHERE id = 1",
+    "SELECT reference, amount FROM transactions WHERE amount > 100 AND reference = 'REF_123'"
 ];
 
 for (const sql of queries) {

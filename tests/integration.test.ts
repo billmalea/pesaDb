@@ -3,7 +3,7 @@ import { unlink } from "node:fs/promises";
 
 const catalogPath = "catalog_int.json";
 // Cleanup
-try { await unlink(catalogPath); } catch { }
+try { await unlink("data/" + catalogPath); } catch { }
 try { await unlink("data/transactions.db"); } catch { }
 try { await unlink("data/transactions.idx"); } catch { }
 
