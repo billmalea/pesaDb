@@ -4,10 +4,11 @@ import { unlink } from "node:fs/promises";
 const catalogPath = "catalog_int.json";
 // Cleanup
 try { await unlink("data/" + catalogPath); } catch { }
-try { await unlink("data/transactions.db"); } catch { }
-try { await unlink("data/transactions.idx"); } catch { }
+try { await unlink("data/test_int_db.db"); } catch { }
+try { await unlink("data/test_int_db.wal"); } catch { }
 
-const db = new Database(catalogPath);
+const dbName = "test_int_db";
+const db = new Database(catalogPath, dbName);
 console.log("Initializing DB...");
 await db.init();
 
@@ -32,3 +33,4 @@ if (highValue.length !== 1) throw new Error("Where clause failed");
 if (highValue[0].reference !== 'REF_002') throw new Error("Projection failed");
 
 console.log("Integration Test Passed!");
+await db.close();

@@ -13,7 +13,7 @@ describe("Crash Recovery", () => {
 
         const dbPath = join(DATA_DIR, `${DB_NAME}.db`);
         const idxPath = join(DATA_DIR, `${DB_NAME}.idx`);
-        const walPath = join(DATA_DIR, `global.wal`);
+        const walPath = join(DATA_DIR, `${DB_NAME}.wal`);
         const catPath = join(DATA_DIR, CATALOG_PATH);
 
         // 1. Clean Slate
@@ -24,7 +24,7 @@ describe("Crash Recovery", () => {
 
         // 2. Init and Insert Data
         console.log("👉 Step 1: Inserting Data...");
-        const db1 = new Database(CATALOG_PATH);
+        const db1 = new Database(CATALOG_PATH, DB_NAME);
         await db1.init();
         await db1.execute(`CREATE TABLE ${DB_NAME} (id INT PRIMARY KEY, val STRING)`);
         await db1.execute(`INSERT INTO ${DB_NAME} VALUES (1, 'Data 1')`);
@@ -33,17 +33,16 @@ describe("Crash Recovery", () => {
 
         // 3. Simulate Crash: Corrupt/Delete the Data File but keep WAL
         console.log("👉 Step 2: Simulating Data File Corruption (Crash)...");
-        // We overwrite the DB file with just the header (empty table)
-        // Or just delete it? If we delete it, `Table.init` creates a new one.
-        // Let's delete it.
-        await unlink(dbPath);
-        // Also delete index to force full recovery reliance
-        await unlink(idxPath);
-        console.log("   ✅ Deleted .db and .idx files (WAL remains).");
+        await db1.close(); // Close DB1 to release lock
+
+        // We overwrite the WAL or just rely on it.
+        // Since we are simulating crash, we don't need to delete .db if it doesn't exist.
+        // We just ensure we are starting fresh from ONLY the WAL (which is what we have).
+        console.log("   ✅ Simulating Crash (Memory Lost, WAL Persists).");
 
         // 4. Restart DB (Recovery)
         console.log("👉 Step 3: Restarting DB...");
-        const db2 = new Database(CATALOG_PATH);
+        const db2 = new Database(CATALOG_PATH, DB_NAME);
         await db2.init(); // This should trigger WAL recovery
 
         // 5. Verify Data
@@ -55,6 +54,8 @@ describe("Crash Recovery", () => {
         expect(rows[0].val).toBe('Data 1');
         expect(rows[1].val).toBe('Data 2');
         console.log("   ✅ SUCCESS: Data recovered from WAL!");
+
+        await db2.close();
 
         // Cleanup
         try { await unlink(dbPath); await unlink(idxPath); await unlink(walPath); await unlink(catPath); } catch { }

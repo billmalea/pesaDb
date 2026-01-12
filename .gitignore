@@ -39,3 +39,10 @@ data/
 *.idx
 *.test.db
 *.test.idx
+
+# C++ Build Artifacts
+*.obj
+*.exe
+*.exp
+*.lib
+*.pdb

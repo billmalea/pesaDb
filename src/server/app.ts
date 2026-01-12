@@ -130,6 +130,65 @@ Bun.serve({
         }
 
 
+        if (url.pathname === "/api/bench/1m" && req.method === "POST") {
+            if (isBenchmarking) {
+                return Response.json({ success: false, error: "Benchmark already in progress" }, { status: 429 });
+            }
+            isBenchmarking = true;
+
+            const { NativeWalManager, WalOpType } = await import("../engine/NativeWAL");
+            const { unlink } = await import("node:fs/promises");
+
+            return new Response(new ReadableStream({
+                async start(controller) {
+                    const log = (msg: string) => {
+                        controller.enqueue(new TextEncoder().encode("LOG:" + msg + "\n"));
+                    };
+
+                    try {
+                        const DB_NAME = "bench_1m_web";
+                        log(`[1M CHALLENGE] Initializing Native C++ Engine for ${DB_NAME}...`);
+
+                        try { await unlink(`data/${DB_NAME}.wal`); } catch { }
+
+                        const wal = new NativeWalManager(DB_NAME);
+                        await wal.init();
+
+                        const COUNT = 1_000_000;
+                        const DATA = JSON.stringify({ id: 1, ref: "TXN_FAST", val: 999.99, status: "COMPLETED" });
+
+                        log(`[1M CHALLENGE] Starting 1,000,000 Writes...`);
+                        const start = performance.now();
+
+                        for (let i = 0; i < COUNT; i++) {
+                            // Raw Append (No SQL Parsing Overhead) to show Engine Speed
+                            wal.append(i, i, WalOpType.INSERT, "bench_1m", DATA, false);
+
+                            if (i % 100_000 === 0 && i > 0) {
+                                log(`[1M CHALLENGE] Processed ${i.toLocaleString()} rows...`);
+                                await new Promise(r => setTimeout(r, 0));
+                            }
+                        }
+
+                        await wal.flush();
+                        const duration = performance.now() - start;
+
+                        log(`[SUCCESS] 1,000,000 rows persisted in ${duration.toFixed(2)}ms`);
+                        log(`[METRIC] Rate: ${(COUNT / (duration / 1000)).toLocaleString()} ops/sec`);
+
+                        await wal.close();
+                        controller.enqueue(new TextEncoder().encode("DONE\n"));
+                        controller.close();
+                    } catch (e: any) {
+                        log(`[ERROR] ${e.message}`);
+                        controller.close();
+                    } finally {
+                        isBenchmarking = false;
+                    }
+                }
+            }), { headers: { "Content-Type": "text/plain" } });
+        }
+
         // Static Files
         if (url.pathname === "/") {
             return new Response(Bun.file("src/public/index.html"));

@@ -8,7 +8,7 @@ const CATALOG_PATH = "bench_catalog.json";
 const ROW_COUNT = 20000; // Increased for stress testing
 
 async function benchmark() {
-    console.log(`\n🚀 Starting PesaDB Benchmark (${ROW_COUNT} transactions)...\n`);
+    console.log(`\n🚀 Starting PesaDB Benchmark (${ROW_COUNT} transactions)....\n`);
 
     // Cleanup
     const dbPath = join(DATA_DIR, `${DB_NAME}.db`);
@@ -21,7 +21,7 @@ async function benchmark() {
     try { await unlink(walPath); } catch { }
     try { await unlink(catPath); } catch { }
 
-    const db = new Database(CATALOG_PATH);
+    const db = new Database(CATALOG_PATH, "bench_integrated_" + Date.now());
     await db.init();
 
     // 1. Create Table
@@ -36,7 +36,9 @@ async function benchmark() {
 
     for (let i = 0; i < ROW_COUNT; i++) {
         await db.execute(`INSERT INTO ${DB_NAME} VALUES (${i}, 'TXN_${i}_REF', ${i % 2 === 0}, ${Math.random() * 10000})`);
+        if (i % 1000 === 0) process.stdout.write(`\rInserted ${i}/${ROW_COUNT}`);
     }
+    console.log(`\rInserted ${ROW_COUNT}/${ROW_COUNT}`);
 
     // COMMIT TRANSACTION (Single Flush)
     await db.execute("COMMIT");
@@ -47,15 +49,26 @@ async function benchmark() {
     console.log(`   ⚡ Speed: ${(ROW_COUNT / (durationInsert / 1000)).toFixed(2)} txns/sec`);
 
     // 3. Storage Efficiency
-    const stats = await stat(dbPath);
-    const jsonSize = JSON.stringify(Array.from({ length: ROW_COUNT }, (_, i) => ({
-        id: i, reference: `TXN_${i}_REF`, is_processed: i % 2 === 0, amount: 5000.55
-    }))).length;
-
     console.log("\n👉 Measurement: Storage Efficiency");
-    console.log(`   📦 PesaDB Size: ${(stats.size / 1024).toFixed(2)} KB`);
+    let dbSize = 0;
+    try {
+        const stats = await stat(dbPath);
+        dbSize = stats.size;
+    } catch { }
+
+    // If DB file missing (In-Memory Mode), check WAL size as primary storage
+    if (dbSize === 0) {
+        try {
+            const stats = await stat(walPath);
+            dbSize = stats.size; // Treat WAL as the "DB Size" for metric comparison
+            console.log("   ℹ️  (Using WAL size as DB file is skipped in In-Memory Mode)");
+        } catch { }
+    }
+
+    const jsonSize = ROW_COUNT * 75; // Approx bytes per row JSON
+    console.log(`   📦 PesaDB Size: ${(dbSize / 1024).toFixed(2)} KB`);
     console.log(`   📄 JSON Size (Approx): ${(jsonSize / 1024).toFixed(2)} KB`);
-    console.log(`   📉 Efficiency: ${((1 - (stats.size / jsonSize)) * 100).toFixed(2)}% smaller than JSON`);
+    console.log(`   📉 Efficiency: ${((1 - (dbSize / jsonSize)) * 100).toFixed(2)}% smaller than JSON`);
 
     // 4. Read Performance (Indexed)
     console.log("\n👉 Measurement: Read Performance (Indexed Lookups)");

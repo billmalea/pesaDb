@@ -41,6 +41,7 @@
 
         th {
             background: #f8f9fa;
+            color: #555;
             font-weight: 600;
         }
 
@@ -66,6 +67,8 @@
 
         button.delete {
             background: #dc3545;
+            padding: 6px 12px;
+            font-size: 12px;
         }
 
         button.delete:hover {
@@ -75,14 +78,84 @@
         .error {
             color: red;
             margin-top: 10px;
+            font-size: 14px;
         }
 
-        pre {
-            background: #2d2d2d;
-            color: #f8f8f2;
+        /* Metrics Grid */
+        .metrics-grid {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .metric-box {
+            flex: 1;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
             padding: 10px;
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .metric-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        /* Terminal Window - Professional/Clean */
+        .terminal-container {
+            margin-top: 20px;
+            border: 1px solid #333;
             border-radius: 4px;
-            overflow-x: auto;
+            background: #1e1e1e;
+            display: none;
+            /* Hidden by default */
+        }
+
+        .terminal-header {
+            background: #333;
+            color: #fff;
+            padding: 5px 10px;
+            font-size: 12px;
+            font-family: monospace;
+            border-bottom: 1px solid #444;
+        }
+
+        .terminal-body {
+            height: 200px;
+            overflow-y: auto;
+            padding: 10px;
+            color: #eee;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+        }
+
+        /* Utility */
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            font-size: 11px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .badge-pending {
+            background: #ffeeba;
+            color: #856404;
+        }
+
+        .badge-completed {
+            background: #d4edda;
+            color: #155724;
         }
     </style>
 </head>
@@ -90,15 +163,19 @@
 <body>
     <h1>PesaDB Transaction Manager</h1>
 
+    <!-- Add Transaction Card -->
     <div class="card">
         <h3>Add Transaction</h3>
-        <input type="number" id="id" placeholder="ID (PK)">
-        <input type="text" id="ref" placeholder="Reference">
-        <input type="number" id="amt" placeholder="Amount">
-        <button onclick="addTxn()">Add</button>
+        <div style="display:flex; gap: 10px;">
+            <input type="number" id="id" placeholder="ID (PK)" style="flex:1">
+            <input type="text" id="ref" placeholder="Reference" style="flex:2">
+            <input type="number" id="amt" placeholder="Amount" style="flex:1">
+            <button onclick="addTxn()" style="flex:1">Add Record</button>
+        </div>
         <div id="error" class="error"></div>
     </div>
 
+    <!-- Recent Transactions Card -->
     <div class="card">
         <h3>Recent Transactions</h3>
         <table id="txnTable">
@@ -107,60 +184,56 @@
                     <th>ID</th>
                     <th>Reference</th>
                     <th>Amount</th>
+                    <th>Currency</th>
+                    <th>Status</th>
                     <th>Action</th>
                 </tr>
             </thead>
-            <tbody id="tableBody">
-                <!-- Rows here -->
-            </tbody>
+            <tbody id="tableBody"></tbody>
         </table>
     </div>
 
+    <!-- 5k Benchmark Card (Standard Blue) -->
     <div class="card">
-        <h3>🚀 Real-Time Performance</h3>
-        <p>Run a live test with <strong>5,000 Real Financial Transactions</strong> (Insert -> Read -> Update).</p>
-        <div style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
-            <div
-                style="flex: 1; min-width: 120px; text-align: center; padding: 10px; background: #f8f9fa; border-radius: 8px;">
-                <div style="font-size: 11px; color: #666;">LAST QUERY</div>
-                <div id="perf-last" style="font-size: 20px; font-weight: bold; color: #007bff;">- ms</div>
+        <h3>Real-Time Performance (5,000 Txns)</h3>
+        <p>Simulation of typical financial workflow: Insert -> Read -> Update.</p>
+
+        <div class="metrics-grid">
+            <div class="metric-box">
+                <div class="metric-label">Last Query</div>
+                <div class="metric-value" id="perf-last" style="color: #0056b3">- ms</div>
             </div>
-            <div
-                style="flex: 1; min-width: 120px; text-align: center; padding: 10px; background: #e3f2fd; border-radius: 8px;">
-                <div style="font-size: 11px; color: #666;">WRITE (ops/s)</div>
-                <div id="perf-write" style="font-size: 20px; font-weight: bold; color: #28a745;">-</div>
+            <div class="metric-box">
+                <div class="metric-label">Write (ops/s)</div>
+                <div class="metric-value" id="perf-write" style="color: #28a745">-</div>
             </div>
-            <div
-                style="flex: 1; min-width: 120px; text-align: center; padding: 10px; background: #e3f2fd; border-radius: 8px;">
-                <div style="font-size: 11px; color: #666;">READ (ops/s)</div>
-                <div id="perf-read" style="font-size: 20px; font-weight: bold; color: #17a2b8;">-</div>
+            <div class="metric-box">
+                <div class="metric-label">Read (ops/s)</div>
+                <div class="metric-value" id="perf-read" style="color: #17a2b8">-</div>
             </div>
-            <div
-                style="flex: 1; min-width: 120px; text-align: center; padding: 10px; background: #fff3cd; border-radius: 8px;">
-                <div style="font-size: 11px; color: #666;">UPDATE (ops/s)</div>
-                <div id="perf-update" style="font-size: 20px; font-weight: bold; color: #fd7e14;">-</div>
+            <div class="metric-box">
+                <div class="metric-label">Update (ops/s)</div>
+                <div class="metric-value" id="perf-update" style="color: #fd7e14">-</div>
             </div>
         </div>
-        <button onclick="runBenchmark()" style="margin-top: 15px; width: 100%; background: #6c757d;">Run 5k Record
-            Stress Test</button>
-        <div id="bench-status" style="margin-top: 15px; font-weight: 500; color: #444; text-align: center;"></div>
 
-        <!-- Progress Steps -->
-        <div id="bench-progress"
-            style="display: none; margin-top: 15px; display: flex; justify-content: space-between; gap: 4px;">
-            <div id="step-1"
-                style="flex: 1; text-align: center; padding: 6px; background: #eee; border-radius: 4px; font-size: 11px; color: #999;">
-                1. Generate 5k Txns</div>
-            <div id="step-2"
-                style="flex: 1; text-align: center; padding: 6px; background: #eee; border-radius: 4px; font-size: 11px; color: #999;">
-                2. Indexed Reads</div>
-            <div id="step-3"
-                style="flex: 1; text-align: center; padding: 6px; background: #eee; border-radius: 4px; font-size: 11px; color: #999;">
-                3. Bulk Updates</div>
+        <button onclick="runBenchmark()" class="action-btn">Run 5k Record Stress Test</button>
+        <div id="bench-status" style="margin-top: 15px; text-align: center; color: #666;"></div>
+
+        <!-- Progress Bar (Steps) -->
+        <div id="bench-progress" style="display: none; margin-top: 15px; gap: 2px;">
+            <div id="step-1" style="flex:1; background:#eee; padding:5px; text-align:center; font-size:12px;">1.
+                Generate</div>
+            <div id="step-2" style="flex:1; background:#eee; padding:5px; text-align:center; font-size:12px;">2. Index
+                Scan</div>
+            <div id="step-3" style="flex:1; background:#eee; padding:5px; text-align:center; font-size:12px;">3. Bulk
+                Update</div>
         </div>
 
-        <div id="bench-data-view" style="display: none; margin-top: 15px;">
-            <h4 style="margin: 0 0 10px 0;">Sample Benchmark Data (Auto-Generated)</h4>
+        <!-- Hidden Data View -->
+        <div id="bench-data-view"
+            style="display: none; margin-top: 15px; border-top: 1px solid #eee; padding-top:10px;">
+            <h4 style="font-size:14px; margin:0 0 10px 0;">Benchmark Sample Data</h4>
             <table style="font-size: 12px;">
                 <thead>
                     <tr>
@@ -172,17 +245,32 @@
                 </thead>
                 <tbody id="benchTableBody"></tbody>
             </table>
-        </div>
-
-        <div style="margin-top: 5px; font-size: 11px; color: #888; text-align: center;">* Data persists in
-            <code id="bench-table-name">bench_transactions</code> table for inspection.
+            <div style="font-size:11px; color:#888; margin-top:5px;">* Table: <code id="bench-table-name">...</code>
+            </div>
         </div>
     </div>
 
+    <!-- 1M Benchmark Card (Brand Red) -->
+    <div class="card card-red">
+        <h3>1 Million Row Challenge</h3>
+        <p>Native C++ Engine Throughput Test (Bypasses SQL Parser)</p>
+
+        <button onclick="run1MBenchmark()" class="action-btn" style="background: #dc3545;">Run 1 Million
+            Inserts</button>
+
+        <div id="term-container-1m" class="terminal-container">
+            <div class="terminal-header">Native Engine Log output</div>
+            <div id="term-content" class="terminal-body"></div>
+        </div>
+    </div>
+
+    <!-- SQL Console -->
     <div class="card">
         <h3>SQL Console</h3>
-        <input type="text" id="sqlInput" placeholder="SELECT * FROM transactions" style="width: 70%">
-        <button onclick="runSQL()">Execute</button>
+        <div style="display:flex; gap:10px; margin-bottom:10px;">
+            <input type="text" id="sqlInput" placeholder="SELECT * FROM transactions" style="flex:1">
+            <button onclick="runSQL()">Execute</button>
+        </div>
         <pre id="sqlOutput">Results will appear here...</pre>
     </div>
 
@@ -190,175 +278,46 @@
         const API = '/api/sql';
 
         async function execute(sql) {
-            const res = await fetch(API, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sql })
-            });
-            const json = await res.json();
-            if (json.timeMs) {
-                document.getElementById('perf-last').innerText = json.timeMs + ' ms';
-            }
-            return json;
-        }
-
-        async function runBenchmark() {
-            const btn = document.querySelector('button[onclick="runBenchmark()"]');
-            const status = document.getElementById('bench-status');
-            const progress = document.getElementById('bench-progress');
-
-            // Steps UI
-            const s1 = document.getElementById('step-1');
-            const s2 = document.getElementById('step-2');
-            const s3 = document.getElementById('step-3');
-            const resetSteps = () => {
-                [s1, s2, s3].forEach(s => {
-                    s.style.background = '#eee';
-                    s.style.color = '#999';
-                    s.style.fontWeight = 'normal';
-                });
-            };
-            const activeStep = (el) => {
-                el.style.background = '#e3f2fd';
-                el.style.color = '#007bff';
-                el.style.fontWeight = 'bold';
-            };
-            const doneStep = (el) => {
-                el.style.background = '#d4edda';
-                el.style.color = '#28a745';
-                el.style.fontWeight = 'normal';
-            };
-
-            btn.disabled = true;
-            btn.innerText = "Running Stress Test...";
-            status.innerText = "Initializing 5,000 Record Benchmark...";
-            progress.style.display = 'flex';
-            resetSteps();
-
             try {
-                const response = await fetch('/api/benchmark', { method: 'POST' });
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop() || '';
-
-                    for (const line of lines) {
-                        processLine(line);
-                    }
+                const res = await fetch(API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sql })
+                });
+                const json = await res.json();
+                if (json.timeMs) {
+                    document.getElementById('perf-last').innerText = json.timeMs + ' ms';
                 }
-
-                // Process remaining buffer
-                if (buffer.trim()) {
-                    processLine(buffer);
-                }
-
-                function processLine(line) {
-                    if (line.includes("Starting 5,000 Inserts")) {
-                        activeStep(s1);
-                        status.innerText = "Generating 5,000 Transactions...";
-                    } else if (line.includes("Inserts completed")) {
-                        doneStep(s1);
-                    } else if (line.includes("Starting 5,000 Indexed Reads")) {
-                        activeStep(s2);
-                        status.innerText = "Testing Read Performance (Index Scan)...";
-                    } else if (line.includes("Reads completed")) {
-                        doneStep(s2);
-                    } else if (line.includes("Starting Bulk Update")) {
-                        activeStep(s3);
-                        status.innerText = "Performing Bulk Updates...";
-                    } else if (line.includes("Bulk Update completed")) {
-                        doneStep(s3);
-                    } else if (line.startsWith("RESULT:")) {
-                        const json = JSON.parse(line.substring(7));
-                        if (json.success) {
-                            document.getElementById('bench-table-name').innerText = json.tableName;
-                            document.getElementById('perf-write').innerText = json.metrics.insertSpeed;
-                            document.getElementById('perf-read').innerText = json.metrics.readSpeed;
-                            document.getElementById('perf-update').innerText = json.metrics.updateSpeed;
-
-                            // Show detailed time results
-                            const tInsert = Math.round(json.metrics.insertTime);
-                            const tRead = Math.round(json.metrics.readTime);
-                            const tUpdate = Math.round(json.metrics.updateTime);
-                            status.innerHTML = `<span style="color: green; font-weight: bold">Done!</span> <span style="color: #555; font-size: 11px; margin-left: 10px;">(Insert: ${tInsert}ms | Read: ${tRead}ms | Update: ${tUpdate}ms)</span>`;
-
-                            // Show the data from the UNIQUE table used
-                            // We use a self-executing async wrapper or just call execute here (chaining properly)
-                            execute(`SELECT * FROM ${json.tableName} LIMIT 10`).then(dataRes => {
-                                if (dataRes.success && dataRes.data) {
-                                    const tbody = document.getElementById('benchTableBody');
-                                    tbody.innerHTML = '';
-                                    dataRes.data.forEach(txn => {
-                                        const tr = document.createElement('tr');
-                                        tr.innerHTML = `
-                                                <td>${txn.id}</td>
-                                                <td>${txn.ref}</td>
-                                                <td>${txn.amount}</td>
-                                                <td><span style="color: green">${txn.status || 'OK'}</span></td>
-                                            `;
-                                        tbody.appendChild(tr);
-                                    });
-                                    document.getElementById('bench-data-view').style.display = 'block';
-
-                                    // Also set the console to show it
-                                    document.getElementById('sqlInput').value = `SELECT * FROM ${json.tableName} LIMIT 10`;
-                                    runSQL();
-                                } else {
-                                    console.warn("Failed to fetch bench data:", dataRes);
-                                }
-                            }).catch(err => {
-                                console.error("Error fetching bench data:", err);
-                            });
-
-                        } else {
-                            status.innerText = "Error: " + json.error;
-                        }
-                    }
-                }
-
+                return json;
             } catch (e) {
-                console.error(e);
-                status.innerText = "Network Error";
+                return { success: false, error: e.message };
             }
-
-            btn.disabled = false;
-            btn.innerText = "Run 5k Record Stress Test";
         }
 
         async function refresh() {
-            // First run create table just in case (idempotent if db persists but table check handles it)
-            // Or typically we assume schema exists. We can construct a safe CREATE TABLE IF NOT EXISTS flow in real apps.
-            // For this output, we'll try to select.
             let res = await execute("SELECT * FROM transactions");
 
-            // Auto-init for demo if missing
-            if (!res.success && res.error.includes('not found')) {
+            // Auto-init schema if missing
+            if (!res.success && (res.error || "").includes('not found')) {
                 await execute("CREATE TABLE transactions (id INT PRIMARY KEY, reference STRING, amount FLOAT)");
-                // Add some initial data
                 await execute("INSERT INTO transactions VALUES (1, 'INIT-01', 100.50)");
                 await execute("INSERT INTO transactions VALUES (2, 'INIT-02', 200.75)");
                 res = await execute("SELECT * FROM transactions");
             }
 
-            if (res.success) {
+            if (res.success && Array.isArray(res.data)) {
                 const tbody = document.getElementById('tableBody');
                 tbody.innerHTML = '';
                 res.data.forEach(txn => {
+                    const statusClass = txn.status === 'COMPLETED' ? 'badge-completed' : 'badge-pending';
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td>${txn.id}</td>
                         <td>${txn.reference}</td>
                         <td>${txn.amount}</td>
-                        <td>
-                            <button class="delete" onclick="deleteTxn(${txn.id})">Delete</button>
-                        </td>
+                        <td>${txn.currency || 'KES'}</td>
+                        <td><span class="badge ${statusClass}">${txn.status || 'PENDING'}</span></td>
+                        <td><button class="delete" onclick="deleteTxn(${txn.id})">Delete</button></td>
                     `;
                     tbody.appendChild(tr);
                 });
@@ -384,24 +343,122 @@
         }
 
         async function deleteTxn(id) {
+            if (!confirm("Delete transaction " + id + "?")) return;
             const res = await execute(`DELETE FROM transactions WHERE id = ${id}`);
-            if (res.success) {
-                refresh();
-            } else {
-                alert(res.error);
-            }
+            if (res.success) refresh();
+            else alert(res.error);
         }
 
         async function runSQL() {
             const sql = document.getElementById('sqlInput').value;
             const res = await execute(sql);
             document.getElementById('sqlOutput').innerText = JSON.stringify(res, null, 2);
-            if (res.success && (sql.toUpperCase().includes('INSERT') || sql.toUpperCase().includes('DELETE') || sql.toUpperCase().includes('UPDATE'))) {
+            if (res.success && /INSERT|DELETE|UPDATE|DROP/i.test(sql)) {
                 refresh();
             }
         }
 
-        // Initial load
+        // --- 5k Benchmark Logic ---
+        async function runBenchmark() {
+            const btn = document.querySelector('button[onclick="runBenchmark()"]');
+            const status = document.getElementById('bench-status');
+            const s1 = document.getElementById('step-1');
+            const s2 = document.getElementById('step-2');
+            const s3 = document.getElementById('step-3');
+
+            const setActive = (el) => { el.style.background = '#0056b3'; el.style.color = 'white'; };
+            const setDone = (el) => { el.style.background = '#d4edda'; el.style.color = '#155724'; };
+            const reset = () => [s1, s2, s3].forEach(el => { el.style.background = '#eee'; el.style.color = '#333'; });
+
+            btn.disabled = true;
+            btn.innerText = "Running...";
+            document.getElementById('bench-progress').style.display = 'flex';
+            reset();
+
+            try {
+                const response = await fetch('/api/benchmark', { method: 'POST' });
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const lines = decoder.decode(value, { stream: true }).split('\n');
+                    for (const line of lines) {
+                        if (line.includes("Starting 5,000 Inserts")) { setActive(s1); status.innerText = "Step 1: Inserting..."; }
+                        else if (line.includes("Inserts completed")) setDone(s1);
+                        else if (line.includes("Starting 5,000 Indexed Reads")) { setActive(s2); status.innerText = "Step 2: Reading..."; }
+                        else if (line.includes("Reads completed")) setDone(s2);
+                        else if (line.includes("Starting Bulk Update")) { setActive(s3); status.innerText = "Step 3: Updating..."; }
+                        else if (line.includes("Bulk Update completed")) setDone(s3);
+                        else if (line.startsWith("RESULT:")) {
+                            const data = JSON.parse(line.substring(7));
+                            if (data.success) {
+                                status.innerText = "Benchmark Complete";
+                                document.getElementById('perf-write').innerText = data.metrics.insertSpeed;
+                                document.getElementById('perf-read').innerText = data.metrics.readSpeed;
+                                document.getElementById('perf-update').innerText = data.metrics.updateSpeed;
+                                document.getElementById('bench-table-name').innerText = data.tableName;
+
+                                // Load sample
+                                const sampleRes = await execute(`SELECT * FROM ${data.tableName} LIMIT 5`);
+                                if (sampleRes.success) {
+                                    document.getElementById('bench-data-view').style.display = 'block';
+                                    document.getElementById('benchTableBody').innerHTML = sampleRes.data.map(r =>
+                                        `<tr><td>${r.id}</td><td>${r.ref}</td><td>${r.amount}</td><td>${r.status}</td></tr>`
+                                    ).join('');
+                                }
+                            } else {
+                                status.innerText = "Failed: " + data.error;
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                status.innerText = "Error: " + e.message;
+            }
+            btn.disabled = false;
+            btn.innerText = "Run 5k Record Stress Test";
+        }
+
+        // --- 1M Benchmark Logic ---
+        async function run1MBenchmark() {
+            const btn = document.querySelector('button[onclick="run1MBenchmark()"]');
+            const container = document.getElementById('term-container-1m');
+            const content = document.getElementById('term-content');
+
+            btn.disabled = true;
+            btn.innerText = "Processing...";
+            container.style.display = 'block';
+            content.innerHTML = '> Initializing Native Engine...\n';
+
+            try {
+                const response = await fetch('/api/bench/1m', { method: 'POST' });
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const lines = decoder.decode(value, { stream: true }).split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith("LOG:")) {
+                            content.innerHTML += `> ${line.substring(4)}<br>`;
+                            content.scrollTop = content.scrollHeight;
+                        } else if (line.trim() === "DONE") {
+                            content.innerHTML += `> DONE. Check Metrics.<br>`;
+                        }
+                    }
+                }
+            } catch (e) {
+                content.innerHTML += `> ERROR: ${e.message}<br>`;
+            }
+            btn.disabled = false;
+            btn.innerText = "Run 1 Million Inserts";
+        }
+
         refresh();
     </script>
 </body>
