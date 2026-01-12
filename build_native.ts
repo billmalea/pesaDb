@@ -2,42 +2,72 @@ import { spawn } from "child_process";
 import { join } from "path";
 import * as fs from "fs";
 
-const isWindows = process.platform === "win32";
-const nativeDir = join(process.cwd(), "src/native");
-const outFile = isWindows ? "wal_debug.dll" : "native_wal.so";
-const outPath = join(nativeDir, outFile);
+export function getBuildCommand(platform: string, cwd: string) {
+    const nativeDir = join(cwd, "src/native");
+    if (platform === "win32") {
+        return {
+            platform: "win32",
+            cmd: "cl",
+            args: ["/LD", join(nativeDir, "wal.cpp")],
+            outMsg: "On Windows, please run 'cl /LD src/native/wal.cpp' in a VS Developer Command Prompt."
+        };
+    } else {
+        const outPath = join(nativeDir, "native_wal.so");
+        const args = [
+            "-shared",
+            "-fPIC",
+            "-O3",
+            "-o", outPath,
+            join(nativeDir, "wal.cpp")
+        ];
+        return {
+            platform: "linux",
+            cmd: "g++",
+            args: args,
+            outPath: outPath
+        };
+    }
+}
 
-console.log(`[Build] Detected platform: ${process.platform}`);
-console.log(`[Build] Compiling C++ Native Engine...`);
+async function run() {
+    const config = getBuildCommand(process.platform, process.cwd());
 
-if (isWindows) {
-    // We assume the user has VS Build Tools environment set up manually or via specific shell
-    // Just printing instructions for Windows dev as automatic compilation from pure JS without vsdevcmd is hard
-    console.log("On Windows, please run 'cl /LD src/native/wal.cpp' in a VS Developer Command Prompt.");
-} else {
-    // Linux/macOS - use G++ or Clang
-    const args = [
-        "-shared",
-        "-fPIC",
-        "-O3", // Optimize for speed
-        "-o", outPath,
-        join(nativeDir, "wal.cpp")
-    ];
+    console.log(`[Build] Detected platform: ${config.platform}`);
+    console.log(`[Build] Compiling C++ Native Engine...`);
 
-    console.log(`[Build] Running: g++ ${args.join(" ")}`);
+    if (config.platform === "win32") {
+        console.log(config.outMsg);
+    } else {
+        console.log(`[Build] Running: ${config.cmd} ${config.args.join(" ")}`);
 
-    const child = spawn("g++", args, { stdio: "inherit" });
+        try {
+            const child = spawn(config.cmd, config.args, { stdio: "inherit" });
 
-    child.on("close", (code) => {
-        if (code === 0) {
-            console.log(`[Build] Success! Binary created at: ${outPath}`);
-            // List the file to confirm
-            if (fs.existsSync(outPath)) {
-                console.log(`[Build] Verified file exists: ${fs.statSync(outPath).size} bytes`);
-            }
-        } else {
-            console.error(`[Build] Compilation failed with code ${code}. Ensure 'g++' is installed.`);
+            child.on("close", (code) => {
+                if (code === 0) {
+                    console.log(`[Build] Success! Binary created at: ${config.outPath}`);
+                    if (fs.existsSync(config.outPath!)) {
+                        console.log(`[Build] Verified file exists: ${fs.statSync(config.outPath!).size} bytes`);
+                    }
+                } else {
+                    console.error(`[Build] Compilation failed with code ${code}. Ensure 'g++' is installed.`);
+                    process.exit(1);
+                }
+            });
+
+            child.on("error", (err) => {
+                console.error(`[Build] Failed to start subprocess: ${err.message}`);
+                process.exit(1);
+            });
+
+        } catch (e) {
+            console.error(e);
             process.exit(1);
         }
-    });
+    }
+}
+
+// Check if running directly (bun run build_native.ts)
+if (import.meta.main) {
+    run();
 }
