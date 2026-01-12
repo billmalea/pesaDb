@@ -74,22 +74,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 3.  **Benchmark Results & Data Inspection**:
     ![Results](docs/images/bench-result.jpg)
 
-## 🌍 Deployment
 
-PesaDB is container-ready. You can deploy it easily to platforms like **Render**, **Railway**, or **Fly.io**.
-
-### Docker
-```bash
-docker build -t pesadb .
-docker run -p 3000:3000 pesadb
-```
-
-### One-Click Deploy (Render)
-1. Fork this repository.
-2. Create a new **Web Service** on Render.
-3. Connect your repository.
-4. Select **Docker** as the Runtime.
-5. Deploy! (The data will persist only as long as the instance runs unless you mount a volume).
 
 ## 📊 Performance & Benchmarks
 
