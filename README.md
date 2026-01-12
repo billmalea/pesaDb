@@ -1,4 +1,4 @@
-# PesaDB - Custom RDBMS (Junior Dev Challenge '26)
+# PesaDB
 
 **PesaDB** is a lightweight, relational database management system implemented from scratch in **TypeScript** (running on **Bun**). 
 
