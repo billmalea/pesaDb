@@ -81,4 +81,78 @@ describe("Coverage Boosters", () => {
         // Cleanup
         try { await unlink("data/" + catalogPath); await unlink(`data/${dbName}.db`); await unlink(`data/${dbName}.idx`); } catch { }
     });
+
+    test("Database DROP TABLE full flow", async () => {
+        const dbName = "test_drop_cov";
+        const catalogPath = "catalog_drop_cov.json";
+        const db = new Database(catalogPath);
+
+        // Cleanup
+        try { await unlink("data/" + catalogPath); await unlink(`data/${dbName}.db`); await unlink(`data/${dbName}.idx`); } catch { }
+
+        await db.init();
+        await db.execute(`CREATE TABLE ${dbName} (id INT PRIMARY KEY)`);
+        await db.execute(`INSERT INTO ${dbName} VALUES (1)`);
+
+        // Verify Files Exist
+        const fs = await import('node:fs/promises');
+        await fs.access(`data/${dbName}.db`);
+
+        // DROP
+        await db.execute(`DROP TABLE ${dbName}`);
+
+        // Verify Files Gone
+        try {
+            await fs.access(`data/${dbName}.db`);
+            throw new Error("File should verify deleted"); // Should not reach here
+        } catch (e: any) {
+            expect(e.code).toBe("ENOENT");
+        }
+
+        // Verify Catalog Update
+        expect(db["catalog"].getTable(dbName)).toBeUndefined();
+    });
+
+    test("Database Transactions BEGIN/COMMIT", async () => {
+        const dbName = "test_txn_cov";
+        const catalogPath = "catalog_txn_cov.json";
+        const db = new Database(catalogPath);
+        try { await unlink("data/" + catalogPath); await unlink(`data/${dbName}.db`); await unlink(`data/${dbName}.idx`); await unlink(`data/global.wal`); } catch { }
+
+        await db.init();
+        await db.execute(`CREATE TABLE ${dbName} (id INT PRIMARY KEY)`);
+
+        const resBegin = await db.execute("BEGIN");
+        expect(resBegin.message).toBe("Transaction Started");
+        expect(db["inTransaction"]).toBe(true);
+
+        await db.execute(`INSERT INTO ${dbName} VALUES (1)`);
+
+        const resCommit = await db.execute("COMMIT");
+        expect(resCommit.message).toBe("Transaction Committed");
+        expect(db["inTransaction"]).toBe(false);
+    });
+
+    test("WAL Manual Coverage (Clear, Close)", async () => {
+        const { WalManager, WalOpType } = await import("../src/engine/WAL");
+        const walInit = new WalManager("test_wal_manual");
+        try { await unlink("data/test_wal_manual.wal"); } catch { }
+
+        await walInit.init();
+        await walInit.append(1, WalOpType.INSERT, "tbl", { a: 1 }, false); // Buffered
+        await walInit.flush(); // Manual flush
+
+        await walInit.clear();
+        await walInit.close();
+
+        // Test append throws if not init?
+        // Actually WalManager.append checks if (!this.fileHandle) throw
+        const walBad = new WalManager("test_wal_bad");
+        try {
+            await walBad.append(1, WalOpType.INSERT, "t", {}, true);
+        } catch (e: any) {
+            expect(e.message).toBe("WAL not initialized");
+        }
+    });
+
 });

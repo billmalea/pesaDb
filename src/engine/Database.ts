@@ -4,29 +4,70 @@ import { Parser } from "./Parser";
 import type { InsertStmt, SelectStmt, CreateStmt, DeleteStmt, UpdateStmt, DropStmt, Expr } from "./AST";
 import { mkdir } from "node:fs/promises";
 import { DATA_DIR } from "./Constants";
+import { WalManager, WalOpType } from "./WAL";
 
 export class Database {
     private catalog: Catalog;
     private tables: Map<string, Table> = new Map();
+    private wal: WalManager;
 
     constructor(customCatalogPath?: string) {
         this.catalog = new Catalog(customCatalogPath);
+        // We use a shared WAL for the DB (simplified) or per-DB WAL. 
+        // Given we have one "Database" instance managing multiple tables, one WAL log is standard.
+        this.wal = new WalManager("global");
     }
 
     async init() {
         try { await mkdir(DATA_DIR, { recursive: true }); } catch { }
         await this.catalog.init();
+        await this.wal.init();
+
         // Load existing tables
         for (const [name, columns] of Object.entries(this.catalog.data.tables)) {
-            const table = new Table(name, columns);
+            const table = new Table(name, columns, this.wal);
             await table.init();
             this.tables.set(name, table);
         }
+
+        // RECOVERY PHASE
+        console.log("🔄 Running Crash Recovery...");
+        const entries = await this.wal.readAll();
+        let recoveredCount = 0;
+        for (const entry of entries) {
+            if (entry.opType === WalOpType.INSERT) {
+                const table = this.tables.get(entry.tableName);
+                if (table && table.pkColumn) {
+                    // Check if already applied
+                    const pkVal = entry.data[table.pkColumn.name];
+                    // We check the index. If index has it, we assume it's persisted.
+                    const exists = await table.getRowByPrimaryKey(pkVal);
+                    if (!exists) {
+                        console.log(`   Restoring missing row in ${entry.tableName}: PK=${pkVal}`);
+                        await table.recoverInsert(entry.data);
+                        recoveredCount++;
+                    }
+                }
+            }
+        }
+        if (recoveredCount > 0) console.log(`✅ Recovered ${recoveredCount} transactions.`);
     }
+
+    private inTransaction = false;
 
     async execute(sql: string): Promise<any> {
         const parser = new Parser(sql);
         const ast = parser.parse();
+
+        if (ast.type === 'BEGIN') {
+            this.inTransaction = true;
+            return { message: "Transaction Started" };
+        }
+        if (ast.type === 'COMMIT') {
+            await this.wal.flush();
+            this.inTransaction = false;
+            return { message: "Transaction Committed" };
+        }
 
         if (ast.type === 'CREATE') return this.execCreate(ast);
         if (ast.type === 'INSERT') return this.execInsert(ast);
@@ -34,6 +75,8 @@ export class Database {
         if (ast.type === 'DELETE') return this.execDelete(ast);
         if (ast.type === 'UPDATE') return this.execUpdate(ast);
         if (ast.type === 'DROP') return this.execDrop(ast);
+
+        throw new Error("Unsupported Statement");
     }
 
     private async execDrop(stmt: DropStmt) {
@@ -50,7 +93,7 @@ export class Database {
         if (this.tables.has(stmt.table)) throw new Error(`Table ${stmt.table} already exists`);
 
         await this.catalog.addTable(stmt.table, stmt.columns);
-        const table = new Table(stmt.table, stmt.columns);
+        const table = new Table(stmt.table, stmt.columns, this.wal);
         await table.init();
         this.tables.set(stmt.table, table);
         return { message: "Table created" };
@@ -70,7 +113,7 @@ export class Database {
             if (col) row[col.name] = stmt.values[i];
         }
 
-        await table.insert(row);
+        await table.insert(row, !this.inTransaction);
         return { message: "Inserted 1 row" };
     }
 

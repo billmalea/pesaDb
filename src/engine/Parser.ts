@@ -1,4 +1,4 @@
-import type { CreateStmt, InsertStmt, SelectStmt, DeleteStmt, UpdateStmt, DropStmt, Expr } from "./AST";
+import type { CreateStmt, InsertStmt, SelectStmt, DeleteStmt, UpdateStmt, DropStmt, Expr, BeginStmt, CommitStmt } from "./AST";
 import { ColumnType } from "./Constants";
 
 export class Parser {
@@ -30,7 +30,7 @@ export class Parser {
         return token;
     }
 
-    parse(): CreateStmt | InsertStmt | SelectStmt | DeleteStmt | UpdateStmt | DropStmt {
+    parse(): CreateStmt | InsertStmt | SelectStmt | DeleteStmt | UpdateStmt | DropStmt | BeginStmt | CommitStmt {
         const token = this.peek().toUpperCase();
         if (token === 'CREATE') return this.parseCreate();
         if (token === 'INSERT') return this.parseInsert();
@@ -38,6 +38,15 @@ export class Parser {
         if (token === 'DELETE') return this.parseDelete();
         if (token === 'UPDATE') return this.parseUpdate();
         if (token === 'DROP') return this.parseDrop();
+        if (token === 'BEGIN') {
+            this.consume('BEGIN');
+            if (this.peek().toUpperCase() === 'TRANSACTION') this.consume('TRANSACTION');
+            return { type: 'BEGIN' };
+        }
+        if (token === 'COMMIT') {
+            this.consume('COMMIT');
+            return { type: 'COMMIT' };
+        }
         throw new Error(`Unknown command: ${token}`);
     }
 

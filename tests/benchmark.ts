@@ -5,7 +5,7 @@ import { join } from "path";
 
 const DB_NAME = "transactions_bench";
 const CATALOG_PATH = "bench_catalog.json";
-const ROW_COUNT = 10000; // Adjust for speed/stress
+const ROW_COUNT = 20000; // Increased for stress testing
 
 async function benchmark() {
     console.log(`\n🚀 Starting PesaDB Benchmark (${ROW_COUNT} transactions)...\n`);
@@ -13,10 +13,12 @@ async function benchmark() {
     // Cleanup
     const dbPath = join(DATA_DIR, `${DB_NAME}.db`);
     const idxPath = join(DATA_DIR, `${DB_NAME}.idx`);
+    const walPath = join(DATA_DIR, `global.wal`); // Global WAL
     const catPath = join(DATA_DIR, CATALOG_PATH);
 
     try { await unlink(dbPath); } catch { }
     try { await unlink(idxPath); } catch { }
+    try { await unlink(walPath); } catch { }
     try { await unlink(catPath); } catch { }
 
     const db = new Database(CATALOG_PATH);
@@ -28,9 +30,17 @@ async function benchmark() {
     // 2. Insert Performance
     console.log("👉 Measurement: Write Performance (Insert)");
     const startInsert = performance.now();
+
+    // START TRANSACTION (Bulk Insert Optimization)
+    await db.execute("BEGIN TRANSACTION");
+
     for (let i = 0; i < ROW_COUNT; i++) {
         await db.execute(`INSERT INTO ${DB_NAME} VALUES (${i}, 'TXN_${i}_REF', ${i % 2 === 0}, ${Math.random() * 10000})`);
     }
+
+    // COMMIT TRANSACTION (Single Flush)
+    await db.execute("COMMIT");
+
     const endInsert = performance.now();
     const durationInsert = endInsert - startInsert;
     console.log(`   ✅ Inserted ${ROW_COUNT} transactions in ${durationInsert.toFixed(2)}ms`);
@@ -66,7 +76,7 @@ async function benchmark() {
     console.log(`   ✅ Scanned ${ROW_COUNT} rows, found ${res.length} matches in ${(endScan - startScan).toFixed(2)}ms`);
 
     // Cleanup
-    try { await unlink(dbPath); await unlink(idxPath); await unlink(catPath); } catch { }
+    try { await unlink(dbPath); await unlink(idxPath); await unlink(walPath); await unlink(catPath); } catch { }
 }
 
 benchmark();

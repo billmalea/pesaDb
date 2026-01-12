@@ -2,6 +2,7 @@ import type { BunFile } from "bun";
 import { BinaryUtils } from "./BinaryUtils";
 import { ColumnType, HEADER_SIZE, MAGIC_BYTES, VERSION, DATA_DIR } from "./Constants";
 import { Index } from "./Index";
+import { type WalManager, WalOpType } from "./WAL";
 import { join } from "path";
 
 export interface Column {
@@ -19,7 +20,7 @@ export class Table {
     public pkColumn?: Column;
     private currentOffset: number = 0;
 
-    constructor(public name: string, public columns: Column[]) {
+    constructor(public name: string, public columns: Column[], private wal?: WalManager) {
         this.path = join(DATA_DIR, `${name}.db`);
         this.file = Bun.file(this.path);
         this.pkColumn = columns.find(c => c.isPrimary);
@@ -51,7 +52,7 @@ export class Table {
         }
     }
 
-    async insert(row: Row): Promise<void> {
+    async insert(row: Row, sync: boolean = true): Promise<void> {
         // 1. Check Primary Key Constraint
         if (this.index && this.pkColumn) {
             const pkVal = row[this.pkColumn.name];
@@ -61,6 +62,17 @@ export class Table {
             }
         }
 
+        // 2. WAL Write (ACID: Durability)
+        // We write to Log BEFORE modifying data file
+        if (this.wal) {
+            // Using logic generic TxnID 0 for now as we don't have a transaction manager yet
+            await this.wal.append(0, WalOpType.INSERT, this.name, row, sync);
+        }
+
+        await this.recoverInsert(row);
+    }
+
+    async recoverInsert(row: Row): Promise<void> {
         // Calculate needed size
         let size = 0;
         for (const col of this.columns) {

@@ -38,6 +38,14 @@ export interface DropStmt {
     table: string;
 }
 
+export interface BeginStmt {
+    type: 'BEGIN';
+}
+
+export interface CommitStmt {
+    type: 'COMMIT';
+}
+
 // Expression AST
 export type Expr =
     | { type: 'BINARY'; op: string; left: Expr; right: Expr }
