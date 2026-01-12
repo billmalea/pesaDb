@@ -3,25 +3,28 @@ import { join } from "path";
 import { DATA_DIR } from "./Constants";
 
 const isWindows = process.platform === "win32";
-const dllPath = join(process.cwd(), "src/native/wal_debug.dll");
+const nativeDir = join(process.cwd(), "src/native");
+// On Linux, we expect the .so to be built by our build script
+const dllPath = join(nativeDir, isWindows ? "wal_debug.dll" : "native_wal.so");
 
 // Conditional DLL Load
 let lib: any = null;
 
-if (isWindows) {
-    try {
-        lib = dlopen(dllPath, {
-            wal_open: { args: [FFIType.cstring], returns: FFIType.ptr },
-            wal_append: { args: [FFIType.ptr, FFIType.f64, FFIType.i32, FFIType.i32, FFIType.cstring, FFIType.cstring, FFIType.bool], returns: FFIType.i32 },
-            wal_flush: { args: [FFIType.ptr], returns: FFIType.i32 },
-            wal_append_batch: { args: [FFIType.ptr, FFIType.ptr, FFIType.i32], returns: FFIType.i32 },
-            wal_close: { args: [FFIType.ptr], returns: FFIType.void }
-        });
-    } catch (e) {
-        console.warn("[NativeWAL] Win32 DLL load failed. Native features disabled.", e);
-    }
-} else {
-    console.warn(`[NativeWAL] Platform '${process.platform}' detected. Native Windows Engine disabled. Falling back to JS.`);
+try {
+    lib = dlopen(dllPath, {
+        wal_open: { args: [FFIType.cstring], returns: FFIType.ptr },
+        wal_append: { args: [FFIType.ptr, FFIType.f64, FFIType.i32, FFIType.i32, FFIType.cstring, FFIType.cstring, FFIType.bool], returns: FFIType.i32 },
+        wal_flush: { args: [FFIType.ptr], returns: FFIType.i32 },
+        wal_append_batch: { args: [FFIType.ptr, FFIType.ptr, FFIType.i32], returns: FFIType.i32 },
+        wal_close: { args: [FFIType.ptr], returns: FFIType.void }
+    });
+} catch (e) {
+    console.error(`[NativeWAL] Failed to load Native Library at ${dllPath}`);
+    console.error(`[NativeWAL] Error:`, e);
+
+    // Hard crash if user wants NO fallback.
+    // Or we throw to ensure they see it.
+    throw new Error("Critical: Native Engine failed to load. Ensure build_native.ts ran successfully.");
 }
 
 export enum WalOpType {
@@ -69,8 +72,8 @@ export class NativeWalManager {
     }
 
     append(lsn: number, txnId: number, opType: WalOpType, tableName: string, data: string, sync: boolean) {
-        if (!lib || !this.handle) return 0; // Silent soft-fail on non-Windows
-
+        if (!this.handle) throw new Error("WAL not initialized");
+        // Direct Native Call Only
         return lib.symbols.wal_append(
             this.handle, lsn, txnId, opType,
             Buffer.from(tableName + "\0"),
@@ -80,16 +83,16 @@ export class NativeWalManager {
     }
 
     appendBatch(data: Buffer, length: number) {
-        if (!lib || !this.handle) return -1;
+        if (!this.handle) return -1;
         return lib.symbols.wal_append_batch(this.handle, data, length);
     }
 
     async flush() {
-        if (lib && this.handle) lib.symbols.wal_flush(this.handle);
+        if (this.handle) lib.symbols.wal_flush(this.handle);
     }
 
     async close() {
-        if (lib && this.handle) {
+        if (this.handle) {
             lib.symbols.wal_close(this.handle);
             NativeWalManager.handles.delete(this.dbPath);
             this.handle = null;
