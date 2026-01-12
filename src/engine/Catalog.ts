@@ -39,4 +39,9 @@ export class Catalog {
     getTable(name: string): Column[] | undefined {
         return this.data.tables[name];
     }
+
+    async removeTable(name: string) {
+        delete this.data.tables[name];
+        await this.save();
+    }
 }

@@ -233,4 +233,16 @@ export class Table {
             await this.insert(row);
         }
     }
+
+    async deleteFiles() {
+        const fs = await import('node:fs/promises');
+        // Truncate first to clear data even if unlink is delayed by OS
+        try { await fs.writeFile(this.path, new Uint8Array(0)); } catch { }
+        try { await fs.unlink(this.path); } catch { }
+        if (this.index) {
+            const indexPath = join(DATA_DIR, `${this.name}.idx`);
+            try { await fs.writeFile(indexPath, new Uint8Array(0)); } catch { }
+            try { await fs.unlink(indexPath); } catch { }
+        }
+    }
 }

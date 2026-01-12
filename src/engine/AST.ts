@@ -17,6 +17,7 @@ export interface SelectStmt {
     table: string;
     columns: string[]; // "*" or specific columns
     where?: Expr;
+    limit?: number;
 }
 
 export interface DeleteStmt {
@@ -30,6 +31,11 @@ export interface UpdateStmt {
     table: string;
     assignments: { column: string; value: any }[];
     where?: Expr;
+}
+
+export interface DropStmt {
+    type: 'DROP';
+    table: string;
 }
 
 // Expression AST

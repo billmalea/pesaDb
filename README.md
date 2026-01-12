@@ -63,6 +63,17 @@ bun run src/server/app.ts
 ```
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+#### Demo Screenshots
+
+1.  **Initial Dashboard**:
+    ![Start](docs/images/bench-start.jpg)
+
+2.  **Live Benchmark Progress**:
+    ![Progress](docs/images/bench-progress.jpg)
+
+3.  **Benchmark Results & Data Inspection**:
+    ![Results](docs/images/bench-result.jpg)
+
 ## 🌍 Deployment
 
 PesaDB is container-ready. You can deploy it easily to platforms like **Render**, **Railway**, or **Fly.io**.

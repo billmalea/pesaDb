@@ -1,7 +1,7 @@
 import { Catalog } from "./Catalog";
 import { Table, type Column, type Row } from "./Table";
 import { Parser } from "./Parser";
-import type { InsertStmt, SelectStmt, CreateStmt, DeleteStmt, UpdateStmt, Expr } from "./AST";
+import type { InsertStmt, SelectStmt, CreateStmt, DeleteStmt, UpdateStmt, DropStmt, Expr } from "./AST";
 import { mkdir } from "node:fs/promises";
 import { DATA_DIR } from "./Constants";
 
@@ -33,6 +33,17 @@ export class Database {
         if (ast.type === 'SELECT') return this.execSelect(ast);
         if (ast.type === 'DELETE') return this.execDelete(ast);
         if (ast.type === 'UPDATE') return this.execUpdate(ast);
+        if (ast.type === 'DROP') return this.execDrop(ast);
+    }
+
+    private async execDrop(stmt: DropStmt) {
+        const table = this.tables.get(stmt.table);
+        if (table) {
+            await table.deleteFiles();
+            this.tables.delete(stmt.table);
+        }
+        await this.catalog.removeTable(stmt.table);
+        return { message: "Table dropped" };
     }
 
     private async execCreate(stmt: CreateStmt) {
@@ -98,6 +109,11 @@ export class Database {
             }
         }
 
+        // Apply LIMIT
+        if (stmt.limit !== undefined && stmt.limit >= 0) {
+            rows = rows.slice(0, stmt.limit);
+        }
+
         // Apply Projection
         if (stmt.columns[0] !== '*') {
             rows = rows.map(r => {
@@ -116,16 +132,16 @@ export class Database {
         const table = this.tables.get(stmt.table);
         if (!table) throw new Error(`Table ${stmt.table} not found`);
 
-        const allRows = await table.selectAll();
-        let keepRows = allRows;
-
-        if (stmt.where) {
-            keepRows = allRows.filter(row => !this.evaluate(stmt.where!, row));
-        } else {
-            keepRows = []; // Delete All
+        if (!stmt.where) {
+            // "DELETE FROM table" - Unconditional full clear
+            await table.overwrite([]);
+            return { message: "Table cleared" };
         }
 
+        const allRows = await table.selectAll();
+        const keepRows = allRows.filter(row => !this.evaluate(stmt.where!, row));
         const deletedCount = allRows.length - keepRows.length;
+
         if (deletedCount > 0) {
             await table.overwrite(keepRows);
         }

@@ -1,4 +1,4 @@
-import type { CreateStmt, InsertStmt, SelectStmt, DeleteStmt, UpdateStmt, Expr } from "./AST";
+import type { CreateStmt, InsertStmt, SelectStmt, DeleteStmt, UpdateStmt, DropStmt, Expr } from "./AST";
 import { ColumnType } from "./Constants";
 
 export class Parser {
@@ -30,14 +30,22 @@ export class Parser {
         return token;
     }
 
-    parse(): CreateStmt | InsertStmt | SelectStmt | DeleteStmt | UpdateStmt {
+    parse(): CreateStmt | InsertStmt | SelectStmt | DeleteStmt | UpdateStmt | DropStmt {
         const token = this.peek().toUpperCase();
         if (token === 'CREATE') return this.parseCreate();
         if (token === 'INSERT') return this.parseInsert();
         if (token === 'SELECT') return this.parseSelect();
         if (token === 'DELETE') return this.parseDelete();
         if (token === 'UPDATE') return this.parseUpdate();
+        if (token === 'DROP') return this.parseDrop();
         throw new Error(`Unknown command: ${token}`);
+    }
+
+    private parseDrop(): DropStmt {
+        this.consume('DROP');
+        this.consume('TABLE');
+        const table = this.consume();
+        return { type: 'DROP', table };
     }
 
     private parseCreate(): CreateStmt {
@@ -106,7 +114,13 @@ export class Parser {
             where = this.parseExpr();
         }
 
-        return { type: 'SELECT', table, columns, where };
+        let limit: number | undefined;
+        if (this.peek().toUpperCase() === 'LIMIT') {
+            this.consume('LIMIT');
+            limit = parseInt(this.consume());
+        }
+
+        return { type: 'SELECT', table, columns, where, limit };
     }
 
     private parseDelete(): DeleteStmt {
