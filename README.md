@@ -66,13 +66,13 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 #### Demo Screenshots
 
 1.  **Initial Dashboard**:
-    ![Start](docs/images/bench-start.jpg)
+    ![Start](docs/images/bench-result.jpg)
 
 2.  **Live Benchmark Progress**:
     ![Progress](docs/images/bench-progress.jpg)
 
 3.  **Benchmark Results & Data Inspection**:
-    ![Results](docs/images/bench-result.jpg)
+    ![Results](docs/images/bench-start.jpg)
 
 
 
