@@ -31,8 +31,8 @@ FROM base AS release
 COPY --from=install /temp/prod/node_modules node_modules
 COPY . .
 
-# Ensure data directory exists
-RUN mkdir -p data
+# Ensure data directory exists and is writable by bun user
+RUN mkdir -p data && chown -R bun:bun data
 
 # run the app
 USER bun
