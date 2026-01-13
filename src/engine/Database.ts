@@ -120,33 +120,72 @@ export class Database {
 
         let rows: Row[] = [];
 
-        // OPTIMIZATION: Check for Primary Key Lookup
-        // Criteria: WHERE clause is "pk = value"
-        let isPkLookup = false;
-        if (stmt.where && stmt.where.type === 'BINARY' && stmt.where.op === '=' && table.pkColumn) {
-            const left = stmt.where.left;
-            const right = stmt.where.right;
-            let key: any;
+        if (stmt.join) {
+            // --- JOIN LOGIC (Nested Loop) ---
+            const joinTable = this.tables.get(stmt.join.table);
+            if (!joinTable) throw new Error(`Joined table ${stmt.join.table} not found`);
 
-            if (left.type === 'IDENTIFIER' && left.name === table.pkColumn?.name && right.type === 'LITERAL') {
-                key = right.value;
-            } else if (right.type === 'IDENTIFIER' && right.name === table.pkColumn?.name && left.type === 'LITERAL') {
-                key = left.value;
+            const outerRows = await table.selectAll();
+            const innerRows = await joinTable.selectAll();
+
+            // Cartesian Product + Filter
+            for (const outer of outerRows) {
+                for (const inner of innerRows) {
+                    // Create Combined Row with qualified names
+                    const combined: Row = {};
+
+                    // Add Outer Table columns (eg. users.id) and raw columns (id)
+                    for (const k in outer) {
+                        combined[k] = outer[k]; // access by 'id'
+                        combined[`${stmt.table}.${k}`] = outer[k]; // access by 'users.id'
+                    }
+
+                    // Add Inner Table columns
+                    for (const k in inner) {
+                        // Collision? Inner overwrites raw 'id' if verified by ON clause usually
+                        // But for safe JOIN evaluation, we rely on qualified names
+                        combined[k] = inner[k];
+                        combined[`${stmt.join.table}.${k}`] = inner[k];
+                    }
+
+                    // Evaluate ON condition
+                    if (this.evaluate(stmt.join.on, combined)) {
+                        rows.push(combined);
+                    }
+                }
+            }
+        } else {
+            // --- STANDARD SELECT ---
+            // OPTIMIZATION: Check for Primary Key Lookup
+            // Criteria: WHERE clause is "pk = value"
+            let isPkLookup = false;
+            if (stmt.where && stmt.where.type === 'BINARY' && stmt.where.op === '=' && table.pkColumn) {
+                const left = stmt.where.left;
+                const right = stmt.where.right;
+                let key: any;
+
+                if (left.type === 'IDENTIFIER' && left.name === table.pkColumn?.name && right.type === 'LITERAL') {
+                    key = right.value;
+                } else if (right.type === 'IDENTIFIER' && right.name === table.pkColumn?.name && left.type === 'LITERAL') {
+                    key = left.value;
+                }
+
+                if (key !== undefined) {
+                    const row = await table.getRowByPrimaryKey(key);
+                    if (row) rows = [row];
+                    isPkLookup = true;
+                }
             }
 
-            if (key !== undefined) {
-                const row = await table.getRowByPrimaryKey(key);
-                if (row) rows = [row];
-                isPkLookup = true;
+            if (!isPkLookup) {
+                rows = await table.selectAll();
             }
         }
 
-        if (!isPkLookup) {
-            rows = await table.selectAll();
-            // Apply WHERE (if not already handled by lookup)
-            if (stmt.where) {
-                rows = rows.filter(row => this.evaluate(stmt.where!, row));
-            }
+        // Apply WHERE (if not already handled by lookup or JOIN ON)
+        // Note: For JOINs, usually WHERE filters the result of the join
+        if (stmt.where) {
+            rows = rows.filter(row => this.evaluate(stmt.where!, row));
         }
 
         // Apply LIMIT
@@ -159,7 +198,10 @@ export class Database {
             rows = rows.map(r => {
                 const newRow: Row = {};
                 for (const col of stmt.columns) {
-                    if (r[col] !== undefined) newRow[col] = r[col];
+                    // Handle qualified projection "table.col" -> "col" or keep as is?
+                    // Standard SQL: return as requested.
+                    const val = r[col];
+                    if (val !== undefined) newRow[col] = val;
                 }
                 return newRow;
             });

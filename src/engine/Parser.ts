@@ -10,7 +10,7 @@ export class Parser {
     }
 
     private tokenize() {
-        const regex = /'[^']*'|"[^"]*"|\d+(?:\.\d+)?|[a-zA-Z0-9_]+|[=<>!]+|[(),*]/g;
+        const regex = /'[^']*'|"[^"]*"|\d+(?:\.\d+)?|[a-zA-Z0-9_]+|[=<>!]+|[(),*.]/g;
         this.tokens = this.sql.match(regex) || [];
     }
 
@@ -117,6 +117,15 @@ export class Parser {
         this.consume('FROM');
         const table = this.consume();
 
+        let join: any;
+        if (this.peek().toUpperCase() === 'JOIN') {
+            this.consume('JOIN');
+            const joinTable = this.consume();
+            this.consume('ON');
+            const on = this.parseExpr();
+            join = { table: joinTable, on };
+        }
+
         let where: Expr | undefined;
         if (this.peek().toUpperCase() === 'WHERE') {
             this.consume('WHERE');
@@ -129,7 +138,7 @@ export class Parser {
             limit = parseInt(this.consume());
         }
 
-        return { type: 'SELECT', table, columns, where, limit };
+        return { type: 'SELECT', table, columns, join, where, limit };
     }
 
     private parseDelete(): DeleteStmt {
@@ -211,7 +220,14 @@ export class Parser {
         if (token.toUpperCase() === 'TRUE') { this.consume(); return { type: 'LITERAL', value: true }; }
         if (token.toUpperCase() === 'FALSE') { this.consume(); return { type: 'LITERAL', value: false }; }
 
-        return { type: 'IDENTIFIER', name: this.consume() };
+        // Support table.column identifiers (e.g. users.id)
+        const part1 = this.consume();
+        if (this.peek() === '.') {
+            this.consume('.');
+            const part2 = this.consume();
+            return { type: 'IDENTIFIER', name: `${part1}.${part2}` };
+        }
+        return { type: 'IDENTIFIER', name: part1 };
     }
 
     private parseLiteral(): any {

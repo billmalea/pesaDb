@@ -8,7 +8,7 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
             background: #f0f2f5;
@@ -157,122 +157,158 @@
             background: #d4edda;
             color: #155724;
         }
+
+        /* 2-Column Layout */
+        .main-container {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .col-left {
+            flex: 2;
+            /* Takes 2/3 of the space */
+        }
+
+        .col-right {
+            flex: 1;
+            /* Takes 1/3 of the space */
+        }
+
+        .sticky-card {
+            position: sticky;
+            top: 20px;
+            /* Adjust as needed */
+        }
     </style>
 </head>
 
 <body>
     <h1>PesaDB Transaction Manager</h1>
 
-    <!-- Add Transaction Card -->
-    <div class="card">
-        <h3>Add Transaction</h3>
-        <div style="display:flex; gap: 10px;">
-            <input type="number" id="id" placeholder="ID (PK)" style="flex:1">
-            <input type="text" id="ref" placeholder="Reference" style="flex:2">
-            <input type="number" id="amt" placeholder="Amount" style="flex:1">
-            <button onclick="addTxn()" style="flex:1">Add Record</button>
+    <div class="main-container">
+        <!-- LEFT COLUMN: Operations & Benchmarks -->
+        <div class="col-left">
+            <!-- Add Transaction Card -->
+            <div class="card">
+                <h3>Add Transaction</h3>
+                <div style="display:flex; gap: 10px;">
+                    <input type="number" id="id" placeholder="ID (PK)" style="flex:1">
+                    <input type="text" id="ref" placeholder="Reference" style="flex:2">
+                    <input type="number" id="amt" placeholder="Amount" style="flex:1">
+                    <button onclick="addTxn()" style="flex:1">Add Record</button>
+                </div>
+                <div id="error" class="error"></div>
+            </div>
+
+            <!-- Recent Transactions Card -->
+            <div class="card">
+                <h3>Recent Transactions</h3>
+                <table id="txnTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Reference</th>
+                            <th>Amount</th>
+                            <th>Currency</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+
+            <!-- 5k Benchmark Card -->
+            <div class="card">
+                <h3>Real-Time Performance (5,000 Txns)</h3>
+                <p>Simulation of typical financial workflow: Insert -> Read -> Update.</p>
+
+                <div class="metrics-grid">
+                    <div class="metric-box">
+                        <div class="metric-label">Last Query</div>
+                        <div class="metric-value" id="perf-last" style="color: #0056b3">- ms</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Write (ops/s)</div>
+                        <div class="metric-value" id="perf-write" style="color: #28a745">-</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Read (ops/s)</div>
+                        <div class="metric-value" id="perf-read" style="color: #17a2b8">-</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Update (ops/s)</div>
+                        <div class="metric-value" id="perf-update" style="color: #fd7e14">-</div>
+                    </div>
+                </div>
+
+                <button onclick="runBenchmark()" class="action-btn">Run 5k Record Stress Test</button>
+                <div id="bench-status" style="margin-top: 15px; text-align: center; color: #666;"></div>
+
+                <div id="bench-progress" style="display: none; margin-top: 15px; gap: 2px;">
+                    <div id="step-1" style="flex:1; background:#eee; padding:5px; text-align:center; font-size:12px;">1.
+                        Generate</div>
+                    <div id="step-2" style="flex:1; background:#eee; padding:5px; text-align:center; font-size:12px;">2.
+                        Index
+                        Scan</div>
+                    <div id="step-3" style="flex:1; background:#eee; padding:5px; text-align:center; font-size:12px;">3.
+                        Bulk
+                        Update</div>
+                </div>
+
+                <div id="bench-data-view"
+                    style="display: none; margin-top: 15px; border-top: 1px solid #eee; padding-top:10px;">
+                    <h4 style="font-size:14px; margin:0 0 10px 0;">Benchmark Sample Data</h4>
+                    <table style="font-size: 12px;">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Ref</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="benchTableBody"></tbody>
+                    </table>
+                    <div style="font-size:11px; color:#888; margin-top:5px;">* Table: <code
+                            id="bench-table-name">...</code>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 1M Benchmark Card -->
+            <div class="card card-red">
+                <h3>1 Million Row Challenge</h3>
+                <p>Native C++ Engine Throughput Test (Bypasses SQL Parser)</p>
+
+                <button onclick="run1MBenchmark()" class="action-btn" style="background: #dc3545;">Run 1 Million
+                    Inserts</button>
+
+                <div id="term-container-1m" class="terminal-container">
+                    <div class="terminal-header">Native Engine Log output</div>
+                    <div id="term-content" class="terminal-body"></div>
+                </div>
+            </div>
         </div>
-        <div id="error" class="error"></div>
+
+        <!-- RIGHT COLUMN: SQL Console -->
+        <div class="col-right">
+            <div class="card sticky-card">
+                <h3>SQL Console</h3>
+                <div style="display:flex; flex-direction: column; gap:10px; margin-bottom:10px;">
+                    <textarea id="sqlInput" rows="5"
+                        style="width: 100%; font-family: monospace; padding: 10px;">SELECT * FROM employees JOIN departments ON employees.dept_id = departments.id</textarea>
+                    <button onclick="runSQL()" style="width: 100%;">Execute SQL Command</button>
+                </div>
+                <div style="font-size: 12px; margin-bottom: 5px; color: #666;">Output:</div>
+                <pre id="sqlOutput"
+                    style="background:#eee; padding:10px; border-radius:4px; overflow-x:auto; max-height: 400px;">Results will appear here...</pre>
+            </div>
+        </div>
     </div>
 
-    <!-- Recent Transactions Card -->
-    <div class="card">
-        <h3>Recent Transactions</h3>
-        <table id="txnTable">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Reference</th>
-                    <th>Amount</th>
-                    <th>Currency</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody id="tableBody"></tbody>
-        </table>
-    </div>
 
-    <!-- 5k Benchmark Card (Standard Blue) -->
-    <div class="card">
-        <h3>Real-Time Performance (5,000 Txns)</h3>
-        <p>Simulation of typical financial workflow: Insert -> Read -> Update.</p>
-
-        <div class="metrics-grid">
-            <div class="metric-box">
-                <div class="metric-label">Last Query</div>
-                <div class="metric-value" id="perf-last" style="color: #0056b3">- ms</div>
-            </div>
-            <div class="metric-box">
-                <div class="metric-label">Write (ops/s)</div>
-                <div class="metric-value" id="perf-write" style="color: #28a745">-</div>
-            </div>
-            <div class="metric-box">
-                <div class="metric-label">Read (ops/s)</div>
-                <div class="metric-value" id="perf-read" style="color: #17a2b8">-</div>
-            </div>
-            <div class="metric-box">
-                <div class="metric-label">Update (ops/s)</div>
-                <div class="metric-value" id="perf-update" style="color: #fd7e14">-</div>
-            </div>
-        </div>
-
-        <button onclick="runBenchmark()" class="action-btn">Run 5k Record Stress Test</button>
-        <div id="bench-status" style="margin-top: 15px; text-align: center; color: #666;"></div>
-
-        <!-- Progress Bar (Steps) -->
-        <div id="bench-progress" style="display: none; margin-top: 15px; gap: 2px;">
-            <div id="step-1" style="flex:1; background:#eee; padding:5px; text-align:center; font-size:12px;">1.
-                Generate</div>
-            <div id="step-2" style="flex:1; background:#eee; padding:5px; text-align:center; font-size:12px;">2. Index
-                Scan</div>
-            <div id="step-3" style="flex:1; background:#eee; padding:5px; text-align:center; font-size:12px;">3. Bulk
-                Update</div>
-        </div>
-
-        <!-- Hidden Data View -->
-        <div id="bench-data-view"
-            style="display: none; margin-top: 15px; border-top: 1px solid #eee; padding-top:10px;">
-            <h4 style="font-size:14px; margin:0 0 10px 0;">Benchmark Sample Data</h4>
-            <table style="font-size: 12px;">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Ref</th>
-                        <th>Amount</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody id="benchTableBody"></tbody>
-            </table>
-            <div style="font-size:11px; color:#888; margin-top:5px;">* Table: <code id="bench-table-name">...</code>
-            </div>
-        </div>
-    </div>
-
-    <!-- 1M Benchmark Card (Brand Red) -->
-    <div class="card card-red">
-        <h3>1 Million Row Challenge</h3>
-        <p>Native C++ Engine Throughput Test (Bypasses SQL Parser)</p>
-
-        <button onclick="run1MBenchmark()" class="action-btn" style="background: #dc3545;">Run 1 Million
-            Inserts</button>
-
-        <div id="term-container-1m" class="terminal-container">
-            <div class="terminal-header">Native Engine Log output</div>
-            <div id="term-content" class="terminal-body"></div>
-        </div>
-    </div>
-
-    <!-- SQL Console -->
-    <div class="card">
-        <h3>SQL Console</h3>
-        <div style="display:flex; gap:10px; margin-bottom:10px;">
-            <input type="text" id="sqlInput" placeholder="SELECT * FROM transactions" style="flex:1">
-            <button onclick="runSQL()">Execute</button>
-        </div>
-        <pre id="sqlOutput">Results will appear here...</pre>
-    </div>
 
     <script>
         const API = '/api/sql';

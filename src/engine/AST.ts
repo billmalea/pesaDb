@@ -12,10 +12,16 @@ export interface InsertStmt {
     values: any[];
 }
 
+export interface JoinClause {
+    table: string;
+    on: Expr;
+}
+
 export interface SelectStmt {
     type: 'SELECT';
+    columns: string[]; // ['*'] or ['id', 'name']
     table: string;
-    columns: string[]; // "*" or specific columns
+    join?: JoinClause;
     where?: Expr;
     limit?: number;
 }

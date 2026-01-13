@@ -9,9 +9,12 @@ console.log("Type 'exit' to quit.");
 const prompt = "pesadb> ";
 process.stdout.write(prompt);
 
-for await (const line of console) {
+import { createInterface } from "readline";
+const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: false });
+
+for await (const line of rl) {
     const input = line.trim();
-    if (input === 'exit') break;
+    if (input === 'exit') process.exit(0);
     if (input === '') {
         process.stdout.write(prompt);
         continue;
