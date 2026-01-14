@@ -6,7 +6,7 @@
 
 -   **Custom Binary Storage Engine**: Instead of text-based formats (like JSON/CSV), PesaDB uses a custom binary packing protocol (`DataView`/`ArrayBuffer`) for efficiency and to demonstrate understanding of memory layout.
 -   **Persistent Hash Indexing**: Enforces Primary Key uniqueness and allows O(1) lookups for `SELECT ... WHERE id = X`.
--   **Recursive Descent SQL Parser**: A hand-written parser (no Regex hacks/libraries) that converts SQL into an AST.
+-   **Recursive Descent SQL Parser**:  parser (no Regex hacks/libraries) that converts SQL into an AST.
 -   **Full CRUD Support**: Supports `CREATE`, `INSERT`, `SELECT` (with `WHERE`), `UPDATE`, and `DELETE`.
 -   **Interactive REPL**: A command-line interface to interact with the DB.
 -   **Web Demo**: A Transaction Manager UI with **Live Performance Benchmarking** to verify engine speed in the browser.
