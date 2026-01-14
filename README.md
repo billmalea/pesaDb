@@ -1,6 +1,6 @@
 # PesaDB
 
-**PesaDB** is a lightweight, relational database management system implemented from scratch in **TypeScript** (running on **Bun**). 
+**PesaDB** is a lightweight, relational database management system implemented from scratch in **TypeScript** (running on **Bun and C++**). 
 
 ## 🚀 Key Features
 
